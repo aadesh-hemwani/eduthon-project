@@ -43,3 +43,44 @@ def about():
 def contact(current_user):
     data = {"title": "Contact", "contact": "+91-960-498-7147"}
     return data
+
+
+@app.route('/updateprofile', methods=['POST'])
+@token_required
+def updateprofile(current_user):
+    if request.method == 'POST':
+        loggedin_user = User.query.filter(
+            User.email == current_user.email).first()
+
+        if request.files.get('selectedProfile'):
+            user_dir = os.path.join(
+                baseDir, 'static/users/'+current_user.email)
+            if not os.path.exists(user_dir):
+                os.makedirs(os.path.join(
+                    baseDir, 'static/users/'+current_user.email))
+
+            profile = request.files['selectedProfile']
+            profile.save(os.path.join(user_dir, "profile_pic.jpg"))
+            image = url_for("static", filename="users/" +
+                            current_user.email+"/profile_pic.jpg")
+            loggedin_user.image_file = image
+            db.session.add(loggedin_user)
+            db.session.commit()
+
+        new_username = request.form['username']
+        if loggedin_user.username != new_username:
+            if User.query.filter(User.username == new_username).first():
+                return {"error": "username already taken"}
+            loggedin_user.username = new_username
+            db.session.add(loggedin_user)
+            db.session.commit()
+
+        return {"msg": "profile updated successfully"}
+    return {"error": "something went wrong"}
+
+@app.route('/home')
+@token_required
+def home(current_user):
+    data = {"username": current_user.username,
+            "email": current_user.email, "image": current_user.image_file}
+    return data
