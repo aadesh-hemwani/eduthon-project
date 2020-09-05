@@ -4,7 +4,6 @@ import profile from "../assets/images/profile.jpg";
 import background from "../assets/images/background.jpg";
 import ErrorPage from "./ErrorPage";
 import { Card } from "react-bootstrap";
-import Pdf from "react-to-pdf";
 
 const ref = React.createRef();
 const options = {
@@ -47,6 +46,10 @@ export default class Home extends Component {
         })
         .catch((error) => console.log(error));
     }
+  };
+
+  printToPdf = () => {
+    window.print();
   };
 
   componentDidMount() {
@@ -106,18 +109,6 @@ export default class Home extends Component {
           <div className="details">
             <h1 className="name">{username}</h1>
             <div className="email">{email}</div>
-            <Pdf
-              targetRef={ref}
-              filename="profile.pdf"
-              options={options}
-              scale={1}
-            >
-              {({ toPdf }) => (
-                <button className="pdf" onClick={toPdf}>
-                  Generate pdf
-                </button>
-              )}
-            </Pdf>
           </div>
 
           <div className="container mt-4">

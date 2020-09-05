@@ -3,7 +3,7 @@ from flaskApi import app, api, db, bcrypt
 from flask_mail import Message, Mail
 from datetime import datetime, timedelta
 from flaskApi.resources import UserRegistration, UserLogin
-from flaskApi.models import User, ConversationThread, Classroom, JoinClassroom, ClassroomSchema
+from flaskApi.models import User, ConversationThread, Classroom, JoinClassroom, ClassroomSchema, Quiz
 import os
 from werkzeug.utils import secure_filename
 from functools import wraps
@@ -185,8 +185,9 @@ def createThread(current_user):
 def CreateClassroom(current_user):
     try:
         if request.method == 'POST':
-            print(request.get_json())
-            data = request.get_json()
+            print("json val: ", request.get_json())
+            data = request.form
+
             classroomId = id_generator()
             classRoom = Classroom(classroom_id=classroomId,
                                   classroom_link=data["classroom_link"], classroom_name=data["classroom_name"],
@@ -195,8 +196,9 @@ def CreateClassroom(current_user):
             db.session.commit()
 
             return jsonify({
-                'classroom_details': getAllClassrooms(current_user),
-                'userDetails': getCommonHeaders(data["userId"])
+                # 'classroom_details': getAllClassrooms(current_user),
+                'userDetails': getCommonHeaders(current_user.id),
+                "classroomId": classroomId
             })
         else:
             return "Invalid request."
@@ -275,102 +277,36 @@ def UpdateClassroom(current_user):
 @app.route('/getAllClassrooms')
 @token_required
 def getAllClassrooms(current_user):
-    try:
-        output = []
-        classrooms = Classroom.query.filter(
-            Classroom.teacher_id == current_user.id).all()
+    output = []
+    classrooms = Classroom.query.filter(
+        Classroom.teacher_id == current_user.id).all()
 
-        if len(classrooms) > 0:
-            classroom_schema = ClassroomSchema(many=True)
-            output = classroom_schema.dump(classrooms)
-        else:
-            joined_classrooms = JoinClassroom.query.filter(
-                JoinClassroom.user_id == current_user.id).all()
+    if len(classrooms) > 0:
+        classroom_schema = ClassroomSchema(many=True)
+        output = classroom_schema.dump(classrooms)
+    else:
+        joined_classrooms = JoinClassroom.query.filter(
+            JoinClassroom.user_id == current_user.id).all()
 
-            for jclass in joined_classrooms:
-                # for getting all classroom details of a particular user
-                classrooms = Classroom.query.filter(
-                    Classroom.classroom_id == jclass.classroom_id).first()
+        for jclass in joined_classrooms:
+            # for getting all classroom details of a particular user
+            classrooms = Classroom.query.filter(
+                Classroom.classroom_id == jclass.classroom_id).first()
 
-                # for getting the teacher details for the respective classroom
-                teacher_data = User.query.filter(
-                    User.id == classrooms.teacher_id).first()
+            # for getting the teacher details for the respective classroom
+            teacher_data = User.query.filter(
+                User.id == classrooms.teacher_id).first()
 
-                classroom_schema = ClassroomSchema().dump(classrooms)
-                classroom_schema["teacher_name"] = teacher_data.username
-                output.append(classroom_schema)
+            classroom_schema = ClassroomSchema().dump(classrooms)
+            classroom_schema["teacher_name"] = teacher_data.username
+            output.append(classroom_schema)
 
-        return jsonify({"classroom_details": output})
-    except Exception as e:
-        return(str(e))
-
-@app.route('/assign_tasks', methods=["POST"])
-# @token_required
-# add current_user as a parameter and email.
-def assign_tasks_to_students():
-    try:
-        if request.method == 'POST':
-            uploads_dir = ""
-            description = ""
-            message = ""
-            if request.form:
-                if request.form['classroom_id']:
-                    if request.files:
-                        uploads_dir = os.path.join(
-                            baseDir, 'static/assignments/'+request.form["email"])
-                        if not os.path.exists(uploads_dir):
-                            os.makedirs(uploads_dir)
-                        profile = request.files['file']
-                        profile.save(os.path.join(
-                            uploads_dir, secure_filename(profile.filename)))
-
-                    description = request.form['description']
-                    due_date = datetime.strptime(
-                        request.form["due_date"], '%Y-%m-%d')
-                    if description or uploads_dir:
-                        assigned_work = assignments(assignment_title=request.form["assignment_title"], classroom_id=request.form["classroom_id"],
-                                                    description=description, due_date=due_date.date(), file_path=uploads_dir,
-                                                    assigned_date=datetime.utcnow())
-                        db.session.add(assigned_work)
-                        db.session.commit()
-                        message = "Task assigned successfully."
-                    else:
-                        message = "please provide description or file."
-                else:
-                    message = "please provide classroom id."
-            return {"message": message}
-    except Exception as e:
-        return(str(e))
+    return jsonify({"classroom_details": output})
 
 
-@app.route('/get_all_assignments', methods=["POST"])
-# @token_required
-# # add current_user as parameter and change the following code accordingly
-def get_all_assignments():
-    try:
-        message = ""
-        if request.method == "POST":
-            data = request.get_json()
-            if data["classroom_id"]:
-                output = []
-                all_assignments = assignments.query.filter(
-                    assignments.classroom_id == data["classroom_id"]).all()
-
-                if len(all_assignments) > 0:
-                    for assign in all_assignments:
-                        assignment_schema = AssignmentSchema().dump(assign)
-                        output.append(assignment_schema)
-
-                message = {"all_assignments": output,
-                           "message": "Details fetched successfully."}
-            else:
-                message = {"message": "Please provide classroom id"}
-        else:
-            message = {"message": "invalid request"}
-
-        return jsonify(message)
-    except Exception as e:
-        return(str(e))
+# @app.route('/assign_tasks', methods=["POST"])
+# def assign_tasks_to_students(current_user):
+#     if
 
 
 @app.route('/get_all_user_threads')
@@ -478,6 +414,80 @@ def send_forgot_password_mail():
         return {"message": f"Mail sent! check in the inbox of {email}"}
     except Exception as e:
         return(str(e))
+
+
+@app.route('/createQuiz', methods=["POST"])
+@token_required
+def createQuiz(current_user):
+    try:
+        classroom_id = request.form['classroom_id']
+        question = request.form["question"]
+        options = request.form["options"]
+
+        classroom = Classroom.query.filter_by(
+            classroom_id=classroom_id).first()
+        if classroom.teacher_id == current_user.id:
+            quiz_id = uuid.uuid4().hex
+
+            time = datetime.utcnow()
+            # save question in a data dict
+            data = {"id": quiz_id, "question": question, "asked": str(time),
+                    "teacher_id": current_user.id, "options": options.split(",")}
+
+            # create and open a json file with that id
+            quiz_dir = os.path.join(baseDir, 'static/quiz/' + classroom_id)
+
+            if not os.path.exists(quiz_dir):
+                os.makedirs(quiz_dir)
+
+            quizFile = open(quiz_dir + "/" + quiz_id + ".json", "w+")
+
+            # save data dict in the file
+            with quizFile as fp:
+                json.dump(data, fp)
+
+            saveQuiz = Quiz(id=quiz_id, classroom_id=classroom_id)
+
+            db.session.add(saveQuiz)
+            db.session.commit()
+
+            return {"message": "thread successfully created"}
+        else:
+            {"message": "only teachers can create quiz"}
+    except Exception as e:
+        return (str(e))
+
+
+@app.route('/getClassroomQuiz')
+def getClassroomQuiz():
+    try:
+        classroom_id = request.args["classroom_id"]
+        classroom = Classroom.query.filter_by(
+            classroom_id=classroom_id).first()
+
+        allQuiz = classroom.quiz
+        quizzes = []
+
+        for x in range(len(allQuiz)-1, -1, -1):
+            file_name = os.path.join(
+                baseDir, f"static\quiz\{allQuiz[x].classroom_id}\{allQuiz[x].id}.json")
+            with open(file_name) as json_file:
+                quizzes.append(json.load(json_file))
+
+        # for q in allQuiz:
+        #     quiz = {}
+        #     quiz['id'] = q.id
+        #     quiz['classroom_id'] = q.classroom_id
+        #     quiz['created_at'] = q.created_at
+        #     quizzes.append(quiz)
+
+        if quizzes:
+            return {"quizzes": quizzes}
+        else:
+            return {"message": "classroom has no quiz"}
+
+    except Exception as e:
+        return str(e)
 
 
 # FOR ADMIN PANEL

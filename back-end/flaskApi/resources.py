@@ -4,6 +4,7 @@ import jwt
 from flaskApi.models import User
 import datetime
 
+
 parser = reqparse.RequestParser()
 
 parser.add_argument('username', "Username cannot be blank")
@@ -15,6 +16,7 @@ class UserRegistration(Resource):
     def post(self):
         try:
             data = parser.parse_args()
+            print(data)
             if User.query.filter(User.email == data['email']).first():
                 return {"error": "Email already in use"}
             if User.query.filter(User.username == data['username']).first():
@@ -24,7 +26,7 @@ class UserRegistration(Resource):
                 data['password']).decode('utf-8')
 
             user = User(username=data['username'],
-                        email=data['email'], password=hash_password, created_date=datetime.date.today())
+                        email=data['email'], password=hash_password, created_date=datetime.datetime.utcnow())
             db.session.add(user)
             db.session.commit()
             return {"msg": "user successfully registered"}
@@ -47,16 +49,23 @@ class UserLogin(Resource):
                 current_user.password, data['password'])
 
             if verify_password and not(current_user.isDisabled):
-                current_user.last_login_time = datetime.datetime.now()
+                current_user.last_login_time = datetime.datetime.utcnow()
                 db.session.commit()
 
-                token = jwt.encode({
-                    'email': current_user.email,
-                    'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=1440)
-                }, app.config['SECRET_KEY'])
+                if current_user.isAdmin:
+                    token = jwt.encode({
+                        'email': current_user.email,
+                        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=120)
+                    }, app.config['SECRET_KEY'])
 
-                return {"token": token.decode('utf-8')}
+                    return {"token": token.decode('utf-8'), "isAdmin": current_user.isAdmin}
+                else:
+                    token = jwt.encode({
+                        'email': current_user.email,
+                        'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=1440)
+                    }, app.config['SECRET_KEY'])
 
+                    return {"token": token.decode('utf-8'), "isAdmin": current_user.isAdmin}
             else:
                 return {"error": "Username or password is incorrect."}
         except Exception as e:

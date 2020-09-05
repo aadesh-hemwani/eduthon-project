@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 import Threads from "./Threads";
 import ThreadPage from "./ThreadPage";
 
-export default class AuthPage extends Component {
+export default class ThreadRoutes extends Component {
   render() {
     return (
       <Router>

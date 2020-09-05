@@ -6,6 +6,7 @@ import Home from "../Pages/Home";
 import FileUpload from "../Pages/FileUpload";
 import EditProfile from "../Pages/EditProfile";
 import ThreadRoutes from "../Pages/thread/ThreadRoutes";
+import Assignment from "../Pages/classroom/Assignment";
 
 import { withRouter } from "react-router-dom";
 import Classroom from "../Pages/classroom/Classroom";
@@ -77,6 +78,10 @@ export class SideBar extends React.Component {
 
       case "classroom":
         page = <Classroom />;
+        break;
+
+      case "assignment":
+        page = <Assignment />;
         break;
 
       default:
@@ -186,6 +191,17 @@ export class SideBar extends React.Component {
                     </div>
                     Threads
                   </button>
+                  <button
+                    className="nav-link"
+                    onClick={this.handleClick}
+                    name="assignment"
+                  >
+                    <div className="sb-nav-link-icon">
+                      <i className="fas fa-comment"></i>
+                    </div>
+                    Assignment
+                  </button>
+
                   <button
                     className="nav-link"
                     onClick={this.handleClick}

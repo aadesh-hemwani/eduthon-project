@@ -1,4 +1,5 @@
 from flaskApi import db
+from flaskApi import ma
 import datetime
 
 
@@ -24,6 +25,16 @@ class User(db.Model):
         return f"{self.id}, {self.username}, {self.email}, {self.image_file}, {self.password}, {self.isDisabled}, {self.created_date}, {self.last_login_time}"
 
 
+class ConversationThread(db.Model):
+    id = db.Column(db.String, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.Date, default=datetime.datetime.utcnow)
+    isClosed = db.Column(db.Boolean, default=False)
+
+    def __repr__(self):
+        return f"{self.id}, {self.user_id}, {self.created_at}"
+
+
 class Classroom(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     classroom_name = db.Column(db.String, nullable=False)
@@ -34,9 +45,20 @@ class Classroom(db.Model):
     section = db.Column(db.String)
     created_date = db.Column(db.Date, nullable=False)
     classroom_desc = db.Column(db.String)
+    quiz = db.relationship('Quiz', backref='creator', lazy=True)
 
     def __repr__(self):
         return f"{self.id}, {self.classroom_name}, {self.classroom_id}, {self.teacher_id}, {self.classroom_link}, {self.classroom_desc}"
+
+
+class Quiz(db.Model):
+    id = db.Column(db.String, primary_key=True)
+    classroom_id = db.Column(db.Integer, db.ForeignKey(
+        'classroom.classroom_id'), nullable=False)
+    created_at = db.Column(db.Date, default=datetime.datetime.utcnow)
+
+    def __repr__(self):
+        return f"{self.id}, {self.classroom_id}, {self.created_at}"
 
 
 class JoinClassroom(db.Model):
@@ -51,7 +73,6 @@ class JoinClassroom(db.Model):
 
 class assignments(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    assignment_title = db.Column(db.String, nullable=False)
     classroom_id = db.Column(db.Integer, nullable=False)
     description = db.Column(db.String, nullable=False)
     due_date = db.Column(db.Date, nullable=False)
@@ -59,7 +80,7 @@ class assignments(db.Model):
     file_path = db.Column(db.String)
 
     def __repr__(self):
-        return f"{self.id}, {self.assignment_title}, {self.classroom_id}, {self.description}, {self.due_date}, {self.assigned_date}, {self.file_path}"
+        return f"{self.id}, {self.classroom_id}, {self.description}, {self.due_date}, {self.assigned_date}, {self.file_path}"
 
 
 class submittedAssignments(db.Model):
@@ -77,23 +98,8 @@ class submittedAssignments(db.Model):
         return f"{self.id}, {self.assignment_id}, {self.file_path}, {self.student_id}, {self.grade}, {self.graded_date}, {self.is_submitted}, {self.remarks}, {self.is_returned}"
 
 
-class ConversationThread(db.Model):
-    id = db.Column(db.String, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.Date, default=datetime.datetime.utcnow)
-
-    def __repr__(self):
-        return f"{self.id}, {self.user_id}, {self.created_at}"
-		
-
 # Db Schemas for json data
 class ClassroomSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Classroom
-        load_instance = True
-
-
-class AssignmentSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = assignments
         load_instance = True
