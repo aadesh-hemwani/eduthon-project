@@ -1,0 +1,39 @@
+.edit_profile_div {
+  width: 50%;
+  position: absolute;
+}
+
+.image_holder {
+  position: relative;
+  height: 35%;
+}
+
+.profile_pic {
+  border-radius: 200px;
+  margin: 15px;
+  width: 10rem;
+  height: 10rem;
+  padding: 6px;
+  object-fit: cover;
+}
+
+@media (max-width: 530px) {
+  .image_holder {
+    height: 20vh;
+  }
+
+  .edit_profile_div {
+    position: relative;
+    width: 95%;
+  }
+  .profile_pic {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    width: 9rem;
+    height: 9rem;
+    border-radius: 200px;
+    margin: 15px;
+  }
+}
