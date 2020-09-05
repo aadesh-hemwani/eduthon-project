@@ -1,0 +1,72 @@
+.container1 {
+  width: 90%;
+  margin: 20px auto;
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(128, 128, 128, 0.2);
+}
+
+.time {
+  float: right;
+}
+.back {
+  float: left;
+  margin-right: 15px;
+}
+.back:focus {
+  outline: none;
+}
+
+.author {
+  float: left;
+}
+@media (max-width: 400px) {
+  .time {
+    margin-left: 4px;
+    float: left;
+  }
+  .author {
+    margin-left: 4px;
+    float: left;
+  }
+}
+
+.question {
+  font-size: 2rem;
+  padding: 15px;
+}
+
+.dividor {
+  width: 100%;
+  height: 1px;
+  background-color: #cacaca;
+  margin: 10px 0;
+}
+
+.muted {
+  color: rgb(168, 168, 168);
+}
+
+.replyTag {
+  padding: 15px;
+}
+.bottom_input {
+  background-color: white;
+  padding: 15px;
+  width: 100%;
+  bottom: 0;
+}
+
+.replies {
+  padding: 15px;
+}
+
+.reply {
+  transition: 0.3s;
+}
+.reply:hover {
+  box-shadow: 0 0 20px rgba(112, 112, 112, 0.459);
+}
+
+.deleteBtn {
+  float: right;
+}

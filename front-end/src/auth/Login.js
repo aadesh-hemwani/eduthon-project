@@ -80,7 +80,13 @@ export default class Login extends Component {
           if (data.token) {
             localStorage.setItem("token", data.token);
             localStorage.setItem("isLoggedIn", true);
-            this.props.history.push("/");
+            localStorage.setItem("isAdmin", data.isAdmin);
+
+            if (data.isAdmin) {
+              this.props.history.push("/admin");
+            } else {
+              this.props.history.push("/");
+            }
           } else {
             this.setState({ login_error: data.error });
           }
@@ -113,7 +119,7 @@ export default class Login extends Component {
                         </h3>
                       </div>
                       <div className="card-body">
-                        <form>
+                        <form onSubmit={this.handleLogin}>
                           <div
                             style={{
                               textAlign: "center",
@@ -174,11 +180,13 @@ export default class Login extends Component {
                           </div>
 
                           <div className="form-group d-flex align-items-center justify-content-between mt-4 mb-0">
-                            <button className="small">Forgot Password?</button>
+                            <Link to="/forgotPassword" className="small">
+                              Forgot Password?
+                            </Link>
                             <button
                               className="btn btn-primary"
                               onClick={this.handleLogin}
-                              type="button"
+                              type="submit"
                               style={{
                                 borderRadius: "10px",
                                 padding: "5px 10px",

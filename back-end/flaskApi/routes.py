@@ -1,16 +1,50 @@
 from flask import jsonify, url_for, request
 from flaskApi import app, api, db, bcrypt
+from flask_mail import Message, Mail
 from datetime import datetime, timedelta
 from flaskApi.resources import UserRegistration, UserLogin
-from flaskApi.models import User, ConversationThread
+from flaskApi.models import User, ConversationThread, Classroom, JoinClassroom, ClassroomSchema
 import os
 from werkzeug.utils import secure_filename
 from functools import wraps
+#import utils
 import jwt
 import json
 import uuid
+import string
+import random
+
+
+app.config.update(
+    MAIL_SERVER='smtp.gmail.com',
+    MAIL_PORT=465,
+    MAIL_USE_SSL=True,
+    MAIL_USERNAME='hackathon123.project@gmail.com',
+    MAIL_PASSWORD='hackathon123'
+)
+
+mail = Mail(app)
 
 baseDir = os.path.dirname(os.path.abspath(__file__))
+
+
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+
+def getCommonHeaders(uId):
+    try:
+        if User.query.filter(User.id == uId).first():
+            user_details = User.query.filter(User.id == uId).first()
+            print("userDetails: ", user_details.username)
+            return {
+                'username': user_details.username,
+                'email': user_details.email,
+                'userId': user_details.id,
+                'login': True
+            }
+    except:
+        raise Exception("error")
 
 
 def token_required(f):
@@ -46,6 +80,27 @@ def home(current_user):
 @app.route('/about')
 def about():
     return {"title": "About"}
+
+
+@app.route('/contact')
+@token_required
+def contact(current_user):
+    data = {"title": "Contact", "contact": "+91-960-498-7147"}
+    return data
+
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
+    if request.method == 'POST':
+        baseDir = os.path.dirname(os.path.abspath(__file__))
+        uploads_dir = os.path.join(baseDir, 'uploads')
+        if not os.path.exists(uploads_dir):
+            os.makedirs(uploads_dir)
+        profile = request.files['file']
+        profile.save(os.path.join(
+            uploads_dir, secure_filename(profile.filename)))
+        return "upload Successful"
+    return "no file found"
 
 
 api.add_resource(UserRegistration, "/register")
@@ -124,47 +179,6 @@ def createThread(current_user):
         print(str(e))
 
 
-@app.route('/get_all_user_threads')
-@token_required
-def get_all_user_threads(current_user):
-    t = current_user.threads
-    if not t:
-        return {"message": f"{current_user.username} has no threads yet!"}
-    threads = []
-
-    for x in range(len(t)-1, -1, -1):
-        file_name = os.path.join(
-            baseDir, f"static\conv_threads\{t[x].id}.json")
-        with open(file_name) as json_file:
-            threads.append(json.load(json_file))
-
-    data = {"threads": threads}
-    return data
-
-
-@app.route('/delete_user_threads')
-@token_required
-def delete_user_threads(current_user):
-    current_user_id = current_user.id
-    print(request.args)
-    thread_id = request.args['threadid']
-    thread = ConversationThread.query.filter_by(id=thread_id).first()
-
-    if thread.user_id == current_user_id:
-        if thread:
-            db.session.delete(thread)
-            current_user.threadsCreated -= 1
-            db.session.commit()
-            file_name = os.path.join(
-                baseDir, f"static\conv_threads\{thread_id}.json")
-            os.remove(file_name)
-
-            return {"message": "thread deleted successfully"}
-        return {"message": "no such thread found"}
-    else:
-        return {"message": "you do not have permission to delete this thread"}
-		
-		
 @app.route("/createClassroom", methods=["POST"])
 @token_required
 # add parameter current_user and change userId to current_user.id
@@ -286,3 +300,178 @@ def getAllClassrooms(current_user):
             output.append(classroom_schema)
 
     return jsonify({"classroom_details": output})
+
+
+# @app.route('/assign_tasks', methods=["POST"])
+# def assign_tasks_to_students(current_user):
+#     if
+
+
+@app.route('/get_all_user_threads')
+@token_required
+def get_all_user_threads(current_user):
+    t = current_user.threads
+    if not t:
+        return {"message": f"{current_user.username} has no threads yet!"}
+    threads = []
+
+    for x in range(len(t)-1, -1, -1):
+        file_name = os.path.join(
+            baseDir, f"static\conv_threads\{t[x].id}.json")
+        with open(file_name) as json_file:
+            threads.append(json.load(json_file))
+
+    data = {"threads": threads}
+    return data
+
+
+@app.route('/delete_user_threads')
+@token_required
+def delete_user_threads(current_user):
+    current_user_id = current_user.id
+    print(request.args)
+    thread_id = request.args['threadid']
+    thread = ConversationThread.query.filter_by(id=thread_id).first()
+
+    if thread.user_id == current_user_id:
+        if thread:
+            db.session.delete(thread)
+            current_user.threadsCreated -= 1
+            db.session.commit()
+            file_name = os.path.join(
+                baseDir, f"static\conv_threads\{thread_id}.json")
+            os.remove(file_name)
+
+            return {"message": "thread deleted successfully"}
+        return {"message": "no such thread found"}
+    else:
+        return {"message": "you do not have permission to delete this thread"}
+
+
+@app.route('/get_thread_details')
+@token_required
+def get_thread_details(current_user):
+    thread_id = request.args['threadid']
+    get_thread = ConversationThread.query.filter_by(id=thread_id).first()
+    thread = {}
+    if not get_thread:
+        return {"message": "no thread found"}
+
+    file_name = os.path.join(baseDir, f"static\conv_threads\{thread_id}.json")
+    with open(file_name) as json_file:
+        thread = json.load(json_file)
+
+    data = {"thread": thread}
+    return data
+
+
+@app.route('/reply_on_thread', methods=["POST"])
+@token_required
+def reply_on_thread(current_user):
+    if request.method == "POST":
+        reply = request.form['reply']
+        thread_id = request.form['threadid']
+
+        get_thread = ConversationThread.query.filter_by(id=thread_id).first()
+        thread = {}
+        if not get_thread:
+            return {"message": "no thread found"}
+
+        file_name = os.path.join(
+            baseDir, f"static\conv_threads\{thread_id}.json")
+        with open(file_name) as json_file:
+            thread = json.load(json_file)
+
+        time = datetime.utcnow()
+        data = {"reply": reply, "replied": str(
+            time), "author": current_user.email, "replies": []}
+        thread['replies'].append(data)
+
+        threadFile = open(file_name, "w+")
+
+        with threadFile as fp:
+            json.dump(thread, fp)
+
+        current_user.threadsReplied += 1
+        current_user.rating += 5
+
+        db.session.commit()
+
+        return {"message": "answered successfully"}
+
+
+@app.route('/send-forgot-password-mail')
+def send_forgot_password_mail():
+    try:
+        email = request.args['email']
+        msg = Message("Forgot Password!",
+                      sender="hackathon123.project@gmail.com",
+                      recipients=[email])
+        msg.body = "reset password! \nreset password link cannot work on other devices as the server is running on developement environment on localhost"
+        mail.send(msg)
+        return {"message": f"Mail sent! check in the inbox of {email}"}
+    except Exception as e:
+        return(str(e))
+
+
+# FOR ADMIN PANEL
+@app.route('/createAdmin', methods=["POST"])
+@token_required
+def createAdmin(current_user):
+    if request.method == "POST":
+        if current_user.isAdmin:
+            if request.form:
+                username = request.form['username']
+                email = request.form['email']
+                password = request.form['password']
+
+                if User.query.filter(User.email == email).first():
+                    return {"message": "Email already in use"}
+                if User.query.filter(User.username == username).first():
+                    return {"message": "username already in use"}
+
+                hash_password = bcrypt.generate_password_hash(
+                    password).decode('utf-8')
+
+                user = User(username=username, email=email, password=hash_password,
+                            created_date=datetime.utcnow(), isAdmin=True)
+                db.session.add(user)
+                db.session.commit()
+                return {"message": "Admin created successfully"}
+        else:
+            return {"message": "Access Denied"}
+
+
+@app.route('/get_all_users')
+@token_required
+def get_all_users(current_user):
+    if current_user.isAdmin:
+        users = User.query.filter_by(isAdmin=False).all()
+        data = []
+        for u in users:
+            user = {}
+            user['id'] = u.id
+            user['username'] = u.username
+            user['email'] = u.email
+            user['image_file'] = u.image_file
+            user['created_date'] = u.created_date
+            user['last_login_time'] = u.last_login_time
+            user['threadsCreated'] = u.threadsCreated
+            user['threadsReplied'] = u.threadsReplied
+            user['rating'] = u.rating
+
+            data.append(user)
+
+        return {"users": data}
+    else:
+        return {"message": "Access Denied"}
+
+# FOR REFERENCE
+# @app.route('/image')
+# def image():
+#     image = url_for("static", filename="/uploads/Screenshot_38.png")
+#     # baseDir = os.path.dirname(os.path.abspath(__file__))
+#     # uploads_dir = os.path.join(baseDir, 'static/uploads/Screenshot_32.png')
+#     # print(uploads_dir)
+#     # os.remove(uploads_dir)
+#     return {"image": image}

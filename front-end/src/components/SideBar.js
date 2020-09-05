@@ -76,7 +76,7 @@ export class SideBar extends React.Component {
         break;
 
       case "classroom":
-        page = <Classroom />
+        page = <Classroom />;
         break;
 
       default:
@@ -117,7 +117,6 @@ export class SideBar extends React.Component {
                 className="dropdown-menu dropdown-menu-right"
                 aria-labelledby="userDropdown"
               >
-                <button className="dropdown-item">Settings</button>
                 <button
                   onClick={this.handleClick}
                   name="editProfile"
@@ -157,7 +156,7 @@ export class SideBar extends React.Component {
                     </div>
                     Profile
                   </button>
-                  <button
+                  {/* <button
                     className="nav-link"
                     onClick={this.handleClick}
                     name="upload"
@@ -166,7 +165,7 @@ export class SideBar extends React.Component {
                       <i className="fas fa-upload"></i>
                     </div>
                     File Upload
-                  </button>
+                  </button> */}
                   <button
                     className="nav-link"
                     onClick={this.handleClick}

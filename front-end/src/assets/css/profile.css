@@ -86,3 +86,24 @@
   font-size: 2rem;
   font-weight: 600;
 }
+
+.pdf {
+  position: absolute;
+  right: 10px;
+  font-weight: 500;
+  color: rgb(117, 145, 199);
+  border: solid rgb(117, 145, 199) 1px;
+  border-radius: 200px;
+  background-color: transparent;
+  padding: 5px 15px;
+  transform: translateY(-50px);
+  box-shadow: 0 10px 20px rgba(172, 172, 172, 0.5);
+  transition: 0.3s;
+}
+
+.pdf:hover {
+  color: white;
+  background-color: rgb(117, 145, 199);
+  transform: translateY(-48px);
+  box-shadow: 0 5px 8px rgba(172, 172, 172, 0.5);
+}
