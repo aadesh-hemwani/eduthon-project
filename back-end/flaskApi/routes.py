@@ -163,3 +163,126 @@ def delete_user_threads(current_user):
         return {"message": "no such thread found"}
     else:
         return {"message": "you do not have permission to delete this thread"}
+		
+		
+@app.route("/createClassroom", methods=["POST"])
+@token_required
+# add parameter current_user and change userId to current_user.id
+def CreateClassroom(current_user):
+    try:
+        if request.method == 'POST':
+            print(request.get_json())
+            data = request.get_json()
+            classroomId = id_generator()
+            classRoom = Classroom(classroom_id=classroomId,
+                                  classroom_link=data["classroom_link"], classroom_name=data["classroom_name"],
+                                  teacher_id=current_user.id, created_date=datetime.utcnow())
+            db.session.add(classRoom)
+            db.session.commit()
+
+            return jsonify({
+                'classroom_details': getAllClassrooms(current_user),
+                'userDetails': getCommonHeaders(data["userId"])
+            })
+        else:
+            return "Invalid request."
+    except:
+        raise Exception("something went wrong")
+
+
+@app.route("/joinClassroom", methods=["POST"])
+@token_required
+# add parameter current_user and change userId to current_user.id
+def JoinClass(current_user):
+    try:
+        if request.method == 'POST':
+            data = request.get_json()
+            classroom_data = Classroom.query.filter(
+                Classroom.classroom_id == data['classroom_id']).first()
+
+            teacher_details = User.query.filter(
+                User.id == classroom_data.teacher_id).first()
+
+            join_classroom_data = JoinClassroom.query.filter(
+                JoinClassroom.user_id == current_user.id, JoinClassroom.classroom_id == data["classroom_id"]).first()
+
+            if not join_classroom_data:
+                if classroom_data and teacher_details:
+                    join_classroom = JoinClassroom(
+                        user_id=current_user.id, classroom_id=data["classroom_id"], join_date=datetime.utcnow())
+                    print(join_classroom)
+                    db.session.add(join_classroom)
+                    db.session.commit()
+                    # add getAllClassroomDetails
+                    return jsonify({
+                        'classroom_details': getAllClassrooms(current_user),
+                        'userDetails': getCommonHeaders(current_user.id)
+                    })
+                else:
+                    return {"message": "classroom or teacher details not present"}
+            else:
+                return {"message": "Already joined the classroom"}
+        else:
+            return {"message": "Invalid request"}
+    except:
+        raise Exception("Something went wrong.")
+
+
+@app.route("/updateClassroom", methods=["POST"])
+@token_required
+def UpdateClassroom(current_user):
+    try:
+        if request.method == 'POST':
+            data = request.get_json()
+
+            classRoom = Classroom.query.filter(
+                Classroom.id == data["id"]).first()
+            print("classroom: ", current_user.id)
+            if classRoom.teacher_id == current_user.id:
+                classRoom.classroom_name = data["classroom_name"]
+                classRoom.subject = data["subject"]
+                classRoom.section = data["section"]
+
+                db.session.commit()
+                message = "success"
+            else:
+                message = "error in updating classroom details"
+            return jsonify({
+                'classroom_details': getAllClassrooms(current_user),
+                'userDetails': getCommonHeaders(data["userId"]),
+                'message': message
+            })
+        else:
+            return "Invalid request."
+    except:
+        raise Exception("something went wrong")
+
+
+@app.route('/getAllClassrooms')
+@token_required
+def getAllClassrooms(current_user):
+    output = []
+    classrooms = Classroom.query.filter(
+        Classroom.teacher_id == current_user.id).all()
+
+    if len(classrooms) > 0:
+        classroom_schema = ClassroomSchema(many=True)
+        output = classroom_schema.dump(classrooms)
+    else:
+        joined_classrooms = JoinClassroom.query.filter(
+            JoinClassroom.user_id == current_user.id).all()
+
+        for jclass in joined_classrooms:
+            # for getting all classroom details of a particular user
+            classrooms = Classroom.query.filter(
+                Classroom.classroom_id == jclass.classroom_id).first()
+
+            # for getting the teacher details for the respective classroom
+            teacher_data = User.query.filter(
+                User.id == classrooms.teacher_id).first()
+
+            classroom_schema = ClassroomSchema().dump(classrooms)
+            classroom_schema["teacher_name"] = teacher_data.username
+            output.append(classroom_schema)
+
+    return jsonify({"classroom_details": output})
