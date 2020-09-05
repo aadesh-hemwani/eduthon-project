@@ -22,11 +22,3 @@
 4. After running if it shows some dependencies are missing please install it manually and also add it in the requirements.txt.
 
 
-**Stepts to migrate database**
-
-1. Install: pip install Flask-Migrate.
-2. Import: from flask_migrate import Migrate. (in __init__.py)
-3. run 3 commands
-	a. flask db init
-	b. flask db migrate -m "Initial migration."
-	c. flask db upgrade
