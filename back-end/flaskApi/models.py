@@ -51,6 +51,7 @@ class JoinClassroom(db.Model):
 
 class assignments(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    assignment_title = db.Column(db.String, nullable=False)
     classroom_id = db.Column(db.Integer, nullable=False)
     description = db.Column(db.String, nullable=False)
     due_date = db.Column(db.Date, nullable=False)
@@ -58,7 +59,7 @@ class assignments(db.Model):
     file_path = db.Column(db.String)
 
     def __repr__(self):
-        return f"{self.id}, {self.classroom_id}, {self.description}, {self.due_date}, {self.assigned_date}, {self.file_path}"
+        return f"{self.id}, {self.assignment_title}, {self.classroom_id}, {self.description}, {self.due_date}, {self.assigned_date}, {self.file_path}"
 
 
 class submittedAssignments(db.Model):
@@ -75,6 +76,7 @@ class submittedAssignments(db.Model):
     def __repr__(self):
         return f"{self.id}, {self.assignment_id}, {self.file_path}, {self.student_id}, {self.grade}, {self.graded_date}, {self.is_submitted}, {self.remarks}, {self.is_returned}"
 
+
 class ConversationThread(db.Model):
     id = db.Column(db.String, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -88,4 +90,10 @@ class ConversationThread(db.Model):
 class ClassroomSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Classroom
+        load_instance = True
+
+
+class AssignmentSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = assignments
         load_instance = True

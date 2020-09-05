@@ -275,36 +275,102 @@ def UpdateClassroom(current_user):
 @app.route('/getAllClassrooms')
 @token_required
 def getAllClassrooms(current_user):
-    output = []
-    classrooms = Classroom.query.filter(
-        Classroom.teacher_id == current_user.id).all()
+    try:
+        output = []
+        classrooms = Classroom.query.filter(
+            Classroom.teacher_id == current_user.id).all()
 
-    if len(classrooms) > 0:
-        classroom_schema = ClassroomSchema(many=True)
-        output = classroom_schema.dump(classrooms)
-    else:
-        joined_classrooms = JoinClassroom.query.filter(
-            JoinClassroom.user_id == current_user.id).all()
+        if len(classrooms) > 0:
+            classroom_schema = ClassroomSchema(many=True)
+            output = classroom_schema.dump(classrooms)
+        else:
+            joined_classrooms = JoinClassroom.query.filter(
+                JoinClassroom.user_id == current_user.id).all()
 
-        for jclass in joined_classrooms:
-            # for getting all classroom details of a particular user
-            classrooms = Classroom.query.filter(
-                Classroom.classroom_id == jclass.classroom_id).first()
+            for jclass in joined_classrooms:
+                # for getting all classroom details of a particular user
+                classrooms = Classroom.query.filter(
+                    Classroom.classroom_id == jclass.classroom_id).first()
 
-            # for getting the teacher details for the respective classroom
-            teacher_data = User.query.filter(
-                User.id == classrooms.teacher_id).first()
+                # for getting the teacher details for the respective classroom
+                teacher_data = User.query.filter(
+                    User.id == classrooms.teacher_id).first()
 
-            classroom_schema = ClassroomSchema().dump(classrooms)
-            classroom_schema["teacher_name"] = teacher_data.username
-            output.append(classroom_schema)
+                classroom_schema = ClassroomSchema().dump(classrooms)
+                classroom_schema["teacher_name"] = teacher_data.username
+                output.append(classroom_schema)
 
-    return jsonify({"classroom_details": output})
+        return jsonify({"classroom_details": output})
+    except Exception as e:
+        return(str(e))
+
+@app.route('/assign_tasks', methods=["POST"])
+# @token_required
+# add current_user as a parameter and email.
+def assign_tasks_to_students():
+    try:
+        if request.method == 'POST':
+            uploads_dir = ""
+            description = ""
+            message = ""
+            if request.form:
+                if request.form['classroom_id']:
+                    if request.files:
+                        uploads_dir = os.path.join(
+                            baseDir, 'static/assignments/'+request.form["email"])
+                        if not os.path.exists(uploads_dir):
+                            os.makedirs(uploads_dir)
+                        profile = request.files['file']
+                        profile.save(os.path.join(
+                            uploads_dir, secure_filename(profile.filename)))
+
+                    description = request.form['description']
+                    due_date = datetime.strptime(
+                        request.form["due_date"], '%Y-%m-%d')
+                    if description or uploads_dir:
+                        assigned_work = assignments(assignment_title=request.form["assignment_title"], classroom_id=request.form["classroom_id"],
+                                                    description=description, due_date=due_date.date(), file_path=uploads_dir,
+                                                    assigned_date=datetime.utcnow())
+                        db.session.add(assigned_work)
+                        db.session.commit()
+                        message = "Task assigned successfully."
+                    else:
+                        message = "please provide description or file."
+                else:
+                    message = "please provide classroom id."
+            return {"message": message}
+    except Exception as e:
+        return(str(e))
 
 
-# @app.route('/assign_tasks', methods=["POST"])
-# def assign_tasks_to_students(current_user):
-#     if
+@app.route('/get_all_assignments', methods=["POST"])
+# @token_required
+# # add current_user as parameter and change the following code accordingly
+def get_all_assignments():
+    try:
+        message = ""
+        if request.method == "POST":
+            data = request.get_json()
+            if data["classroom_id"]:
+                output = []
+                all_assignments = assignments.query.filter(
+                    assignments.classroom_id == data["classroom_id"]).all()
+
+                if len(all_assignments) > 0:
+                    for assign in all_assignments:
+                        assignment_schema = AssignmentSchema().dump(assign)
+                        output.append(assignment_schema)
+
+                message = {"all_assignments": output,
+                           "message": "Details fetched successfully."}
+            else:
+                message = {"message": "Please provide classroom id"}
+        else:
+            message = {"message": "invalid request"}
+
+        return jsonify(message)
+    except Exception as e:
+        return(str(e))
 
 
 @app.route('/get_all_user_threads')
